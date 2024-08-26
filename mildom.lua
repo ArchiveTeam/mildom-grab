@@ -111,7 +111,10 @@ set_item = function(url)
     if item_name_new ~= item_name then
       ids = {}
       context = {}
-      if item_type == "asset" and string.match(url, "%.m3u8$") then
+      if item_type == "asset" and (
+        string.match(url, "%.m3u8$")
+        or string.match(url, "%.m3u8%?")
+      ) then
         context["m3u8"] = true
       end
       ids[string.lower(item_value)] = true
@@ -373,12 +376,15 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       item_type ~= "asset"
       or (
         context["m3u8"]
-        and not string.match(url, "%.ts$")
+        and string.match(url, "%.m3u8")
       )
     ) then
     html = read_file(file)
     if context["m3u8"]
-      and string.match(url, "%.m3u8$") then
+      and (
+        string.match(url, "%.m3u8$")
+        or string.match(url, "%.m3u8%?")
+      ) then
       for line in string.gmatch(html, "([^\n]+)") do
         if not string.match(line, "^#") then
           local newurl = urlparse.absolute(url, line)
