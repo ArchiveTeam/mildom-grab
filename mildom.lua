@@ -534,7 +534,8 @@ wget.callbacks.write_to_warc = function(url, http_stat)
       return false
     end
     local json = cjson.decode(percent_encode_url(decode_codepoint(html)))
-    if json["code"] ~= 0 then
+    if json["code"] ~= 0
+      and not string.match(url["url"], "/nonolive/gappserv/live/enterstudio") then
       print("Bad response code in JSON.")
       retry_url = true
       return false
@@ -596,8 +597,8 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
     io.stdout:flush()
     tries = tries + 1
     local maxtries = 5
-    if status_code == 200 or status_code == 404 then
-      maxtries = 2
+    if string.match(url["url"], "^https?://cloudac%-cf%-jp%.mildom%.com/nonolive/gappserv/user/profileV2%?__platform=web&user_id=[0-9]+$") then
+      maxtries = 0
     end
     if tries > maxtries then
       io.stdout:write(" Skipping.\n")
