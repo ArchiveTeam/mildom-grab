@@ -67,7 +67,7 @@ end
 
 discover_item = function(target, item)
   if not target[item] then
-print('discovered', item)
+--print('discovered', item)
     target[item] = true
     return true
   end
@@ -75,6 +75,9 @@ print('discovered', item)
 end
 
 find_item = function(url)
+  if ids[url] then
+    return nil
+  end
   local value = nil
   local type_ = nil
   for pattern, name in pairs({
