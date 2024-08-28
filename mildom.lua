@@ -376,7 +376,10 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       item_type ~= "asset"
       or (
         context["m3u8"]
-        and string.match(url, "%.m3u8")
+        and (
+          string.match(url, "%.m3u8$")
+          or string.match(url, "%.m3u8%?")
+        )
       )
     ) then
     html = read_file(file)
@@ -395,6 +398,11 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     end
     if string.match(url, "^https?://cloudac%-cf%-jp%.mildom%.com/") then
       json = cjson.decode(html)
+      if string.match(url, "/nonolive/gappserv/user/profileV2%?")
+        and json["code"] == 1
+        and json["message"] == "" then
+        return urls
+      end
       if string.match(url, "[%?&]page=")
         and json
         and not string.match(url, "/nonolive/gappserv/index/anchorRecommendV2")
@@ -525,7 +533,8 @@ wget.callbacks.write_to_warc = function(url, http_stat)
     retry_url = true
     return false
   end
-  if http_stat["statcode"] ~= 200 then
+  if http_stat["statcode"] ~= 200
+    and http_stat["statcode"] ~= 404 then
     retry_url = true
     return false
   end
@@ -541,7 +550,12 @@ wget.callbacks.write_to_warc = function(url, http_stat)
     end
     local json = cjson.decode(percent_encode_url(decode_codepoint(html)))
     if json["code"] ~= 0
-      and not string.match(url["url"], "/nonolive/gappserv/live/enterstudio") then
+      and not string.match(url["url"], "/nonolive/gappserv/live/enterstudio")
+      and not (
+        string.match(url["url"], "/nonolive/gappserv/user/profileV2%?")
+        and json["code"] == 1
+        and json["message"] == ""
+      ) then
       print("Bad response code in JSON.")
       retry_url = true
       return false
