@@ -258,8 +258,13 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     if not processed(url_)
       and not processed(url_ .. "/")
       and allowed(url_, origurl) then
+      local headers = {}
+      if context["m3u8"] then
+        headers["Referer"] = ""
+      end
       table.insert(urls, {
-        url=url_
+        url=url_,
+        headers=headers
       })
       addedtolist[url_] = true
       addedtolist[url] = true
