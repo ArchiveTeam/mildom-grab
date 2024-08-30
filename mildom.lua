@@ -31,7 +31,7 @@ local is_initial_url = true
 
 abort_item = function(item)
   abortgrab = true
-  --killgrab = true
+  killgrab = true
   if not item then
     item = item_name
   end
@@ -82,7 +82,8 @@ find_item = function(url)
   local type_ = nil
   for pattern, name in pairs({
     ["^https?://cloudac%-cf%-jp%.mildom%.com/nonolive/gappserv/user/profileV2%?__platform=web&user_id=([0-9]+)$"]="profile",
-    ["^https?://cloudac%-cf%-jp%.mildom%.com/nonolive/videocontent/clip/detail?__platform=web&clip_id=([^&]+)$"]="clip",
+    ["^https?://cloudac%-cf%-jp%.mildom%.com/nonolive/videocontent/clip/detail%?__platform=web&clip_id=([^&]+)$"]="clip",
+    ["^https?://cloudac%-cf%-jp%.mildom%.com/nonolive/videocontent/playback/getPlaybackDetail%?__platform=web&mark=1&v_id=([^&]+)$"]="video",
     ["^https?://([^/]*mildom%.tv/.+)$"]="asset",
     ["^https?://([^/]*mildom%.com/assets/.+)$"]="asset",
     ["^https?://([^/]*mildom%.com/static/.+)$"]="asset",
@@ -241,6 +242,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
   end
 
   local function check(newurl)
+    local post_body = nil
+    local post_url = nil
     if not newurl then
       newurl = ""
     end
@@ -255,17 +258,36 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     while string.find(url_, "&amp;") do
       url_ = string.gsub(url_, "&amp;", "&")
     end
+    if string.match(url_, "/nonolive/videocontent/clip/comment/list") then
+      if not context["comments_json"] then
+        return nil
+      end
+      post_body = cjson.encode(context["comments_json"])
+      post_url = url_
+      url_ = url_ .. "?" .. post_body
+    end
     if not processed(url_)
       and not processed(url_ .. "/")
       and allowed(url_, origurl) then
       local headers = {}
-      if context["m3u8"] then
-        headers["Referer"] = ""
+      if post_body then
+        table.insert(urls, {
+          url=post_url,
+          method="POST",
+          body_data=post_body,
+          headers={
+            ["Content-Type"]="application/json"
+          }
+        })
+      else
+        if context["m3u8"] then
+          headers["Referer"] = ""
+        end
+        table.insert(urls, {
+          url=url_,
+          headers=headers
+        })
       end
-      table.insert(urls, {
-        url=url_,
-        headers=headers
-      })
       addedtolist[url_] = true
       addedtolist[url] = true
     end
@@ -375,7 +397,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     return result
   end
 
-  if allowed(url)
+  if (allowed(url) or string.match(url, "/nonolive/videocontent/clip/comment/list"))
     and status_code < 300
     and (
       item_type ~= "asset"
@@ -411,7 +433,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       if string.match(url, "[%?&]page=")
         and json
         and not string.match(url, "/nonolive/gappserv/index/anchorRecommendV2")
-        and not string.match(url, "/nonolive/gappserv/channel/liveEndRecoV4") then
+        and not string.match(url, "/nonolive/gappserv/channel/liveEndRecoV4")
+        and not string.match(url, "/nonolive/videocontent/playback/autoplay") then
         local body = json["body"]
         local count = 0
         local list_body = body
@@ -486,13 +509,45 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       and string.match(url, "/nonolive/videocontent/clip/detail") then
       check("https://cloudac-cf-jp.mildom.com/nonolive/videocontent/video/viewInc?__platform=web&v_type=1&v_id=" .. item_value .. "&user_id=" .. json["body"]["user_id"])
       check("https://www.mildom.com/clip/" .. item_value)
+      context["comments_json"] = {
+        ["video_id"]=item_value,
+        ["page"]=1,
+        ["size"]=3
+      }
+      check("https://cloudac-cf-jp.mildom.com/nonolive/videocontent/clip/comment/list?__platform=web")
     elseif item_type == "video"
       and string.match(url, "/nonolive/videocontent/playback/getPlaybackDetail") then
       local user_id = json["body"]["playback"]["user_id"]
+      local game_key = json["body"]["playback"]["game_key"]
+      local country = json["body"]["playback"]["country"]
+      context["video_length"] = json["body"]["playback"]["video_length"]
       check("https://www.mildom.com/playback/" .. user_id .. "/" .. item_value)
       check("https://cloudac-cf-jp.mildom.com/nonolive/videocontent/clip/playbackPageList?__platform=web&v_id=" .. item_value .. "&limit=30&page=1")
       check("https://cloudac-cf-jp.mildom.com/nonolive/gappserv/fansGroup/getPageInfo?__platform=web&host_id=" .. user_id .. "&video_type=2&video_id=" .. item_value)
       check("https://cloudac-cf-jp.mildom.com/nonolive/videocontent/playback/getPlaybackDetail?__platform=web&v_id=" .. item_value .. "&mark=1")
+      check("https://cloudac-cf-jp.mildom.com/nonolive/videocontent/playback/autoplay?__platform=web&v_id=" .. item_value .. "&user_id=" .. user_id .. "&country=" .. country .. "&game_key=" .. game_key .. "&page=1&limit=20")
+      for _, offset in pairs({"0", "1000"}) do
+        check("https://cloudac-cf-jp.mildom.com/nonolive/videocontent/chat/replay?__platform=web&video_id=" .. item_value .. "&time_offset_ms=" .. offset .. "&drag_flag=1")
+        check("https://cloudac-cf-jp.mildom.com/nonolive/videocontent/chat/replay?__platform=web&video_id=" .. item_value .. "&time_offset_ms=" .. offset)
+      end
+    end
+    if string.match(url, "/nonolive/videocontent/chat/replay%?") then
+      local body = json["body"]
+      if body and body["models"] then
+        local max_end_offset = 0
+        for _, d in pairs(body["models"]) do
+          local offset = d["summary"]["end_offset_ms"]
+          if offset < context["video_length"] then
+            check(set_new_params(url, {["time_offset_ms"]=tostring(offset)}))
+          end
+        end
+      end
+    end
+    if string.match(url, "/nonolive/videocontent/clip/comment/list%?") then
+      if json["body"] and json["body"]["hasNext"] then
+        context["comments_json"]["page"] = context["comments_json"]["page"] + 1
+        check(url)
+      end
     end
     if json then
       html = html .. " " .. flatten_json(json)
@@ -606,7 +661,8 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
     end
   end
 
-  if seen_200[url["url"]] then
+  if seen_200[url["url"]]
+    and not string.match(url["url"], "/nonolive/videocontent/clip/comment/list") then
     print("Received data incomplete.")
     abort_item()
     return wget.actions.EXIT

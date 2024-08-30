@@ -77,11 +77,11 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20240829.01'
+VERSION = '20240830.01'
 USER_AGENT = 'Mozilla/5.0 (X11; Linux i686; rv:124.0) Gecko/20100101 Firefox/124.0'
 TRACKER_ID = 'mildom'
 TRACKER_HOST = 'legacy-api.arpa.li'
-MULTI_ITEM_SIZE = 20
+MULTI_ITEM_SIZE = 1
 
 
 ###########################################################################
@@ -311,13 +311,12 @@ class WgetArgs(object):
             if item_type == 'profile':
                 wget_args.extend(['--warc-header', 'mildom-profile: '+item_value])
                 wget_args.append('https://cloudac-cf-jp.mildom.com/nonolive/gappserv/user/profileV2?__platform=web&user_id='+item_value)
-            # needs a bit more testing
-            #elif item_type == 'clip':
-            #    wget_args.extend(['--warc-header', 'mildom-clip: '+item_value])
-            #    wget_args.append('https://cloudac-cf-jp.mildom.com/nonolive/videocontent/clip/detail?__platform=web&clip_id='+item_value)
-            #elif item_type == 'video':
-            #    wget_args.extend(['--warc-header', 'mildom-video: '+item_value])
-            #    wget_args.append('https://cloudac-cf-jp.mildom.com/nonolive/videocontent/playback/getPlaybackDetail?__platform=web&mark=1&v_id='+item_value)
+            elif item_type == 'clip':
+                wget_args.extend(['--warc-header', 'mildom-clip: '+item_value])
+                wget_args.append('https://cloudac-cf-jp.mildom.com/nonolive/videocontent/clip/detail?__platform=web&clip_id='+item_value)
+            elif item_type == 'video':
+                wget_args.extend(['--warc-header', 'mildom-video: '+item_value])
+                wget_args.append('https://cloudac-cf-jp.mildom.com/nonolive/videocontent/playback/getPlaybackDetail?__platform=web&mark=1&v_id='+item_value)
             elif item_type == 'asset':
                 wget_args.extend(['--warc-header', 'mildom-asset-url: https://'+item_value])
                 wget_args.append('https://'+item_value)
