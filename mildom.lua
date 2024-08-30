@@ -130,6 +130,18 @@ set_item = function(url)
   end
 end
 
+percent_encode_url = function(url)
+  temp = ""
+  for c in string.gmatch(url, "(.)") do
+    local b = string.byte(c)
+    if b < 32 or b > 126 then
+      c = string.format("%%%02X", b)
+    end
+    temp = temp .. c
+  end
+  return temp
+end
+
 allowed = function(url, parenturl)
   if ids[url] then
     return true
@@ -159,7 +171,7 @@ allowed = function(url, parenturl)
 
   if not string.match(url, "^https?://[^/]*mildom%.tv/")
     and not string.match(url, "^https?://[^/]*mildom%.com/") then
-    discover_item(discovered_outlinks, url)
+    discover_item(discovered_outlinks, percent_encode_url(url))
     return false
   end
 
