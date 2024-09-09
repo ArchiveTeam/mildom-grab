@@ -77,7 +77,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20240830.02'
+VERSION = '20240909.01'
 USER_AGENT = 'Mozilla/5.0 (X11; Linux i686; rv:124.0) Gecko/20100101 Firefox/124.0'
 TRACKER_ID = 'mildom'
 TRACKER_HOST = 'legacy-api.arpa.li'
@@ -390,8 +390,6 @@ pipeline = Pipeline(
             rsync_target_source_path=ItemInterpolation('%(data_dir)s/'),
             rsync_extra_args=[
                 '--recursive',
-                '--partial',
-                '--partial-dir', '.rsync-tmp',
                 '--min-size', '1',
                 '--no-compress',
                 '--compress-level', '0'
