@@ -673,7 +673,8 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
     end
   end
 
-  if seen_200[url["url"]]
+  -- 8 is higher than the current max tries
+  if seen_200[url["url"]] and seen_200[url["url"]] > 8
     and not string.match(url["url"], "/nonolive/videocontent/clip/comment/list") then
     print("Received data incomplete.")
     abort_item()
@@ -710,7 +711,10 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
     return wget.actions.CONTINUE
   else
     if status_code == 200 then
-      seen_200[url["url"]] = true
+      if not seen_200[url["url"]] then
+        seen_200[url["url"]] = 0
+      end
+      seen_200[url["url"]] = seen_200[url["url"]] + 1
     end
     downloaded[url["url"]] = true
   end
